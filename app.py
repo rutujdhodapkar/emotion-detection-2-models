@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
@@ -30,7 +31,7 @@ class EmotionModel(nn.Module):
         x = self.fc4(x)
         return x
 
-# Vectorization and model training for Logistic Regression
+# Train logistic regression model
 def train_logistic_regression(X_train, y_train):
     vectorizer = TfidfVectorizer(max_features=8000)
     X_train_vec = vectorizer.fit_transform(X_train)
@@ -38,14 +39,21 @@ def train_logistic_regression(X_train, y_train):
     model.fit(X_train_vec, y_train)
     return vectorizer, model
 
-# Load PyTorch model
+# Load or train the PyTorch model
 def load_pytorch_model(input_size, output_size):
+    model_path = 'emotion_model.pth'
     model = EmotionModel(input_size=input_size, hidden_size1=2048, hidden_size2=1024, hidden_size3=512, output_size=output_size)
-    model.load_state_dict(torch.load('emotion_model.pth', map_location=torch.device('cpu')))
-    model.eval()
+    
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        model.eval()
+    else:
+        # Optionally, you can include logic to train the model here if the file doesn't exist.
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    
     return model
 
-# Prediction function for PyTorch model
+# Prediction functions
 def predict_emotion_pytorch(text, model, vectorizer, label_mapping):
     text_vec = vectorizer.transform([text]).toarray()
     text_tensor = torch.tensor(text_vec, dtype=torch.float32)
@@ -55,16 +63,14 @@ def predict_emotion_pytorch(text, model, vectorizer, label_mapping):
         emotion = list(label_mapping.keys())[list(label_mapping.values()).index(predicted.item())]
         return emotion
 
-# Prediction function for Logistic Regression
 def predict_emotion_logistic(text, vectorizer, model):
     text_vec = vectorizer.transform([text])
     return model.predict(text_vec)[0]
 
-# Load the dataset
-data_path = 'Emotion_final_with_predictions.csv'  # Adjust as necessary
+# Main code execution
+data_path = 'Emotion_final_with_predictions.csv'
 data = load_data(data_path)
 
-# Prepare data
 X = data['Text']
 y = data['Emotion']
 
@@ -94,12 +100,13 @@ if st.button('Predict'):
             predicted_emotion = predict_emotion_logistic(input_text, vectorizer_logistic, logistic_regression_model)
             st.write(f'Predicted Emotion (Logistic Regression): {predicted_emotion}')
         else:
-            # Load PyTorch model
-            vectorizer_pytorch = TfidfVectorizer(max_features=8000)
-            vectorizer_pytorch.fit(X_train)  # Same vectorizer used for training
-            pytorch_model = load_pytorch_model(input_size=8000, output_size=len(label_mapping))
-            predicted_emotion = predict_emotion_pytorch(input_text, pytorch_model, vectorizer_pytorch, label_mapping)
-            st.write(f'Predicted Emotion (PyTorch Neural Network): {predicted_emotion}')
+            try:
+                pytorch_model = load_pytorch_model(input_size=8000, output_size=len(label_mapping))
+                vectorizer_pytorch = vectorizer_logistic  # Using the same vectorizer
+                predicted_emotion = predict_emotion_pytorch(input_text, pytorch_model, vectorizer_pytorch, label_mapping)
+                st.write(f'Predicted Emotion (PyTorch Neural Network): {predicted_emotion}')
+            except FileNotFoundError as e:
+                st.error(str(e))
     else:
         st.write("Please enter some text to predict the emotion.")
 
