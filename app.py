@@ -8,8 +8,7 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-# Load the dataset and cache it
-@st.cache_data
+# Load the dataset
 def load_data(data_path):
     return pd.read_csv(data_path)
 
@@ -31,8 +30,7 @@ class EmotionModel(nn.Module):
         x = self.fc4(x)
         return x
 
-# Vectorization and model training for Logistic Regression, cached to speed up execution
-@st.cache_resource
+# Vectorization and model training for Logistic Regression
 def train_logistic_regression(X_train, y_train):
     vectorizer = TfidfVectorizer(max_features=8000)
     X_train_vec = vectorizer.fit_transform(X_train)
@@ -40,8 +38,7 @@ def train_logistic_regression(X_train, y_train):
     model.fit(X_train_vec, y_train)
     return vectorizer, model
 
-# Function to load PyTorch model (cached to avoid reloading every time)
-@st.cache_resource
+# Load PyTorch model
 def load_pytorch_model(input_size, output_size):
     model = EmotionModel(input_size=input_size, hidden_size1=2048, hidden_size2=1024, hidden_size3=512, output_size=output_size)
     model.load_state_dict(torch.load('emotion_model.pth', map_location=torch.device('cpu')))
@@ -64,7 +61,7 @@ def predict_emotion_logistic(text, vectorizer, model):
     return model.predict(text_vec)[0]
 
 # Load the dataset
-data_path = 'Emotion_final_with_predictions.csv'  # Ensure the path is correct for deployment
+data_path = 'Emotion_final_with_predictions.csv'  # Adjust as necessary
 data = load_data(data_path)
 
 # Prepare data
@@ -97,7 +94,7 @@ if st.button('Predict'):
             predicted_emotion = predict_emotion_logistic(input_text, vectorizer_logistic, logistic_regression_model)
             st.write(f'Predicted Emotion (Logistic Regression): {predicted_emotion}')
         else:
-            # Load PyTorch model (assuming it is pre-trained and saved as a .pth file)
+            # Load PyTorch model
             vectorizer_pytorch = TfidfVectorizer(max_features=8000)
             vectorizer_pytorch.fit(X_train)  # Same vectorizer used for training
             pytorch_model = load_pytorch_model(input_size=8000, output_size=len(label_mapping))
