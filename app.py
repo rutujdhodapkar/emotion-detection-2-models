@@ -3,14 +3,15 @@ import torch
 import torch.nn as nn
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
 # Check if GPU is available and set the device accordingly
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")  # Use CPU for Streamlit Cloud
 
 # Load the dataset
+@st.cache_data
 def load_data(data_path):
     return pd.read_csv(data_path)
 
@@ -18,19 +19,16 @@ def load_data(data_path):
 class EmotionModel(nn.Module):
     def __init__(self, input_size, output_size):
         super(EmotionModel, self).__init__()
-        self.fc1 = nn.Linear(input_size, 100000)   # 100,000 neurons
-        self.fc2 = nn.Linear(100000, 50000)         # 50,000 neurons
-        self.fc3 = nn.Linear(50000, 25000)          # 25,000 neurons
-        self.fc4 = nn.Linear(25000, output_size)    # Output layer
+        self.fc1 = nn.Linear(input_size, 1000)   # Reduced neurons for deployability
+        self.fc2 = nn.Linear(1000, 500)          # Reduced neurons
+        self.fc3 = nn.Linear(500, output_size)    # Output layer
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
         x = self.dropout(x)
         x = torch.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = torch.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc3(x)
         return x
 
 # Function to calculate total parameters in the PyTorch model
@@ -49,13 +47,13 @@ def train_logistic_regression(X_train, y_train):
 # Function to load PyTorch model
 def load_pytorch_model(input_size, output_size):
     model = EmotionModel(input_size=input_size, output_size=output_size)
-    model.to(device)  # Move the model to the GPU if available
+    model.to(device)  # Keep the model on CPU
     return model
 
 # Prediction function for PyTorch model
 def predict_emotion_pytorch(text, model, vectorizer, label_mapping):
     text_vec = vectorizer.transform([text]).toarray()
-    text_tensor = torch.tensor(text_vec, dtype=torch.float32).to(device)  # Move to GPU if available
+    text_tensor = torch.tensor(text_vec, dtype=torch.float32).to(device)  # Stay on CPU
     with torch.no_grad():
         output = model(text_tensor)
         _, predicted = torch.max(output, 1)
@@ -68,7 +66,7 @@ def predict_emotion_logistic(text, vectorizer, model):
     return model.predict(text_vec)[0]
 
 # Load the dataset and prepare data
-data_path = 'Emotion_final_with_predictions.csv'  # Ensure the path is correct for deployment
+data_path = 'Emotion_final_with_predictions.csv'  # Ensure this file is in the same directory
 data = load_data(data_path)
 
 # Prepare data
