@@ -8,7 +8,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
 # Check if GPU is available and set the device accordingly
-device = torch.device("cpu")  # Use CPU for Streamlit Cloud
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Use GPU if available, else CPU
 
 # Load the dataset
 @st.cache_data
@@ -19,8 +19,8 @@ def load_data(data_path):
 class EmotionModel(nn.Module):
     def __init__(self, input_size, output_size):
         super(EmotionModel, self).__init__()
-        self.fc1 = nn.Linear(input_size, 1000)   # Reduced neurons for deployability
-        self.fc2 = nn.Linear(1000, 500)          # Reduced neurons
+        self.fc1 = nn.Linear(input_size, 1000)   # Adjust as needed for parameter count
+        self.fc2 = nn.Linear(1000, 500)          # Adjust as needed for parameter count
         self.fc3 = nn.Linear(500, output_size)    # Output layer
         self.dropout = nn.Dropout(0.5)
 
@@ -47,13 +47,13 @@ def train_logistic_regression(X_train, y_train):
 # Function to load PyTorch model
 def load_pytorch_model(input_size, output_size):
     model = EmotionModel(input_size=input_size, output_size=output_size)
-    model.to(device)  # Keep the model on CPU
+    model.to(device)  # Move the model to GPU or CPU
     return model
 
 # Prediction function for PyTorch model
 def predict_emotion_pytorch(text, model, vectorizer, label_mapping):
     text_vec = vectorizer.transform([text]).toarray()
-    text_tensor = torch.tensor(text_vec, dtype=torch.float32).to(device)  # Stay on CPU
+    text_tensor = torch.tensor(text_vec, dtype=torch.float32).to(device)  # Move tensor to GPU or CPU
     with torch.no_grad():
         output = model(text_tensor)
         _, predicted = torch.max(output, 1)
