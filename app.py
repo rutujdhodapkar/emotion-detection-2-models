@@ -89,9 +89,15 @@ vectorizer_pytorch = TfidfVectorizer(max_features=8000)
 vectorizer_pytorch.fit(X_train)  # Same vectorizer used for training
 pytorch_model = load_pytorch_model(input_size=8000, output_size=len(label_mapping))
 
+# Calculate total parameters in the PyTorch model
+total_params = calculate_total_params(pytorch_model)
+
 # Streamlit UI setup
 st.title("Emotion Prediction App")
 st.write("Enter a sentence below to predict the emotion:")
+
+# Display the total number of parameters
+st.write(f'**Total Parameters in the PyTorch Model:** {total_params}')
 
 # Text input for user
 user_input = st.text_area("Input Text:")
